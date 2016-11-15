@@ -1,0 +1,5 @@
+(define (even<odd? a b c d e)
+  (let ((b2i (lambda(b) (if b 1 0))))
+    (let ((sum (lambda(f) (+ (b2i (f a)) (+ (b2i (f b)) (+ (b2i (f c)) (+ (b2i (f d)) (+ (b2i (f e))))))))))
+      (let ((even (sum even?)) (odd (sum odd?)))
+        (< even odd)))))

@@ -1,3 +1,13 @@
+/*
+ * mallocをsubstrでしたにもかかわらず、
+ * その先頭からずれたポインタを返している限り、
+ * substr外ではfreeすべき位置の追いようがなくなる。
+ * substr内でfreeするわけにもいかないので、
+ * ちょうど返すポインタと同じ位置でmallocすべきということになる。
+ * 別にwhile内で'a'を探す作業は、strcpy先でなくとも、
+ * s[i]で探すことで事足りる。
+ *
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,33 +18,5 @@ char *substr(char *s)
     char *p;
  
     p = malloc(strlen(s) + 1);
-    strcpy(p, s);
-    while (p[i] != '\0') {
-        if (p[i] == 'a')
-            break;
-        i++;
-    }
- 
-    return p + i;
-}
- 
-int main()
-{
-    char buf[100] = "";
-    char *s[5];
-    int i;
- 
-    for (i = 0; i < 5; i++) {
-        scanf("%99s", buf);
-        s[i] = substr(buf);
-        buf[0] = '\0';
-    }
- 
-    for (i = 4; 0 <= i; i--) {
-        printf("%s\n", s[i]);
-        /* 以下の行を入れるとエラーになる。 */
-        /* free(s[i]); */
-    }
- 
-    return 0;
-}
+    while (s[i] != '\0') {
+        if (s[i] == 'a')

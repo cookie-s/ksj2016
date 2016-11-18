@@ -1,0 +1,85 @@
+本当は本物のCの仕様書を参照すべきであるが、有料であるため、ISOのC仕様書のdraftを参照することにした。
+ISO/IEC 9899:201xの2011/04/12 Commitee Draft(http://open-std.org/JTC1/SC22/WG14/www/docs/n1570.pdf)によれば、
+下記の記載がある。適当に省略している部分もある。
+
+"""
+5.1.2.3 Program execution
+2 Accessing a volatile object, modifying an object, modifying a file, or calling a function
+that does any of those operations are all side effects, which are changes in the state of
+the execution environment. Evaluation of an expression in general includes both value
+computations and initiation of side effects. Value computation for an lvalue expression
+includes determining the identity of the designated object.
+
+3 Sequenced before is an asymmetric, transitive, pair-wise relation between evaluations
+executed by a single thread, which induces a partial order among those evaluations.
+
+"""
+
+"""
+6.5 Expressions
+
+1 The value computations of the operands of an operator
+are sequenced before the value computation of the result of the operator.
+
+2 If a side effect on a scalar object is unsequenced relative to either a different side effect
+on the same scalar object or a value computation using the value of the same scalar
+object, the behavior is undefined. If there are multiple allowable orderings of the
+subexpressions of an expression, the behavior is undefined if such an unsequenced side
+effect occurs in any of the orderings.
+"""
+
+"""
+6.5.3.1 Prefix increment and decrement operators
+
+2 The value of the operand of the prefix ++ operator is incremented. The result is the new
+value of the operand after incrementation. The expression ++E is equivalent to (E+=1).
+See the discussions of additive operators and compound assignment for information on
+constraints, types, side effects, and conversions and the effects of operations on pointers.
+"""
+
+"""
+6.5.16.2 Compound assignment
+
+3 A compound assignment of the form E1 op = E2 is equivalent to the simple assignment
+expression E1 = E1 op (E2), except that the lvalue E1 is evaluated only once, and with
+respect to an indeterminately-sequenced function call, the operation of a compound
+assignment is a single evaluation. I
+"""
+
+"""
+6.5.16 Assignment operators
+
+1
+ assignment-expression:
+	conditional-expression
+	unary-expression assignment-operator assignment-expression
+ assignment-operator: one of
+	= *= /= %= += -= <<= >>= &= ^= |=
+
+3 An assignment operator stores a value in the object designated by the left operand. An
+assignment expression has the value of the left operand after the assignment, but is not
+an lvalue. The type of an assignment expression is the type the left operand would have
+after lvalue conversion. The side effect of updating the stored value of the left operand is
+sequenced after the value computations of the left and right operands. The evaluations of
+the operands are unsequenced.
+"""
+
+まとめると、"sequenced before"とは評価間の非対称的、推移的な半順序で、
+複数の副作用の間で"sequenced before"による順序が定まらないときは、振る舞いは未定義になる。
+演算子に関して、各オペランドの評価は、結果の計算に対して"sequenced before"。
+前置インクリメント"++"は、 ++E は (E+=1) と等価だとして定義される。
+これは E=E+(1) と多少の違いを除いて等価で、これは"代入後の左オペランドの値"を返す。
+このときの副作用は左右オペランドの計算と"sequenced after"の関係にある。
+
+すなわち、与えられたプログラムでは、
+インクリメントされたデータ同士の加算演算の前にそれぞれのインクリメントが評価されることは保証されていて、
+各インクリメントの中では代入後の左辺の値が返されることは保証されているが、
+逆に言えば++xの返り値はその間のどの時点のx+=1の左辺の値でも良い。
+
+ひとつめのインクリメントが副作用を起こしてから、その時点のxの値を返して、
+ふたつめのインクリメントが副作用を起こして、その時点のxの値を返して、最後に加算された場合、yは5になる。
+一方、ひとつめのインクリメントが副作用を起こしてから、直後ふたつめのインクリメントが副作用を起こして、
+それぞれがその後のxの値を返して加算された場合、yは6になる。
+
+実際、自分のマシンで試してみたところ、おそらく仕様にまともに対応しているであろうgccとclangでyの値は変わってきた。
+(gcc: y=6, clang: y=5)

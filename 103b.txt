@@ -1,0 +1,64 @@
+課題103bを選択した。
+
+asm.s, main.c, Makefileを順に以下に書く。それぞれ、コンパイル用、テスト用、本体である。
+
+``` asm.s
+# main.cのobject fileからenlargeをlinkできるようにsymbol:enlargeをexportする。
+.globl enlarge
+
+# ここからenlarge
+enlarge:
+    srawi %r4, %r3, 31  # 32bit整数用算術右シフト命令で、31bitシフトする。ここでsizeof(int)が4であることを暗に仮定している。
+    ori %r4, %r4, 1     # 最下位bitをset。上と合わせて、%r4は、%r3のsign bitが1のとき-1, sign bitが0のとき1になる。
+    add %r3, %r3, %r4   # %r4を%r3に足す。これがenlargeの返り値となる。
+    blr
+```
+
+``` main.c
+#include <assert.h>
+#include <stdio.h>
+
+int enlarge(int);
+
+int main(void) {
+    assert( enlarge(0) == 1 );
+    assert( enlarge(-1) == -2 );
+    assert( enlarge(100) == 101 );
+    assert( enlarge(-100) == -101 );
+    assert( enlarge(0x7FFFFFFE) == 0x7FFFFFFF );
+    assert( enlarge(0x80000001) == 0x80000000 );
+    printf("if you reach here, it means you passed the tests!\n");
+    return 0;
+}
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main: main.c asm.s
+        gcc main.c asm.s -o main
+
+```
+
+makeコマンドを叩くと実行可能ファイルmainが出来上がり、これを実行するとテストをパスしたことがわかる。
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIAEbmRlgAA+2XW2/TMBTH+0o+hVmF1EltsZukRR3jjYkXLq9IvKSt24ZlyZSksIGQ6gyhsosG
+u2hi8II0sYlJBWkIJk0TH8Ztt4+B7SZtQXR76iaEf6qc2Ofv42M7PkkRVAvXY6MFMnK6zq8op8PB
+a0QMqTCDdF3TspkYREjN5WJAH3FcgprnGy4AsaLjTJvYG6o7z/6Pgvj+G95MeoQz4xuc1bRh+89C
+yP6x/xlVU2MAji6kPv/5/sfBjGHa6SIlTafwGBd9UDYtTMkSDV5j2zLcCqbBmmXa05TsUrJCA2Zp
+UPKKkn1vfqbgWPm+DM/NOq5PyTuuqgdKumI5BQuEAkWJA0rWxW/AvRJe8wpgeK7x1ATXXC3JCjUJ
+VARAHKiZgul3Nr91Nr+ebOydNLdOP663Vw9o8IMubNKFRvvtcetoh0dYJypi2p6lF0w08q5nPsNO
+OWHa/jgly5qYVsA13LrHZtHZ3mKTax01281tStj9J0pehjPiITpuL0BWIN7EQux8qLcOl1rHK2L0
+NQ/7TN86XGQ+228aNFil5D13VSesGyVfxI3Klt0zKzbgncgyYlUeA1lJoSQYMMCegUn2Kfk8EI5R
+KnWXKiw0EQ4fJFgTI+yffj/gy9Bdg2CZ+Yu2jDRPf27QYLFd3xHuB/0WLFe57KdTMmpE/u+mgJGN
+cU7+h1mE+vlfRzz/a1mZ/y+EuGkXrVoJg5uG52HXT1dvKf02zy+ZDm9SWLqM8rhInRPdJv7kJJ44
+ZmkcPO9mI+El0dPCcTA5yZIk6/A3cwoJeyozTIBg6AGe4SPUpM4QwbnclOC2kPaqU8M73Ag/T8IO
+YRVGHWZdtgDlxJhZBvNODbjYKFZBFbs4CUy2MNiwPWGY5Z5LwK9i4GPP964+ssdCFy72a64N4ITy
+4rJSrTj/d41pzF/7IxrjvPOPYPT9p0FNVdn5ZxVdnv+LIP3gzv17D/PAsCxFYUVeHGlF4WU+/DYE
+4v+BcqVSLP7WAlJOqL7sWUgkEolEIpFIJBKJRCKRSCQSiUQikUgifgEEsmQAACgAAA==

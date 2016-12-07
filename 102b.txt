@@ -1,0 +1,92 @@
+課題102bを選択した。
+
+与えられたCプログラムを 102b.c として保存した。
+
+1. gcc -S 102b.c
+この結果は、102b.sとして出力された。
+中身は
+        .file   "102b.c"
+        .abiversion 2
+        .section        ".toc","aw"
+        .section        ".text"
+        .align 2
+        .globl f
+        .type   f, @function
+f:
+        std 31,-8(1)
+        stdu 1,-64(1)
+        mr 31,1
+        mr 10,3
+        mr 9,4
+        stw 10,44(31)
+        stw 9,40(31)
+        lwz 10,44(31)
+        lwz 9,40(31)
+        mullw 9,10,9
+        extsw 9,9
+        cmpwi 7,9,0
+        ble 7,.L2
+        lwz 10,44(31)
+        lwz 9,40(31)
+        add 9,10,9
+        extsw 9,9
+        b .L3
+.L2:
+        lwz 10,44(31)
+        lwz 9,40(31)
+        subf 9,9,10
+        extsw 9,9
+.L3:
+        mr 3,9
+        addi 1,31,64
+        ld 31,-8(1)
+        blr
+        .long 0
+        .byte 0,0,0,0,128,1,0,1
+        .size   f,.-f
+        .ident  "GCC: (Ubuntu/IBM 5.4.0-6ubuntu1~16.04.2) 5.4.0 20160609"
+        .section        .note.GNU-stack,"",@progbits
+```
+
+2.
+まず、gcc -c 102b.cとしてオブジェクトファイルにする。102b.oが出力される。
+これをobjdump -dにかけると、
+
+```
+102b.o:     file format elf64-powerpcle
+
+
+Disassembly of section .text:
+
+0000000000000000 <f>:
+   0:   f8 ff e1 fb     std     r31,-8(r1)
+   4:   c1 ff 21 f8     stdu    r1,-64(r1)
+   8:   78 0b 3f 7c     mr      r31,r1
+   c:   78 1b 6a 7c     mr      r10,r3
+  10:   78 23 89 7c     mr      r9,r4
+  14:   2c 00 5f 91     stw     r10,44(r31)
+  18:   28 00 3f 91     stw     r9,40(r31)
+  1c:   2c 00 5f 81     lwz     r10,44(r31)
+  20:   28 00 3f 81     lwz     r9,40(r31)
+  24:   d6 49 2a 7d     mullw   r9,r10,r9
+  28:   b4 07 29 7d     extsw   r9,r9
+  2c:   00 00 89 2f     cmpwi   cr7,r9,0
+  30:   18 00 9d 40     ble     cr7,48 <f+0x48>
+  34:   2c 00 5f 81     lwz     r10,44(r31)
+  38:   28 00 3f 81     lwz     r9,40(r31)
+  3c:   14 4a 2a 7d     add     r9,r10,r9
+  40:   b4 07 29 7d     extsw   r9,r9
+  44:   14 00 00 48     b       58 <f+0x58>
+  48:   2c 00 5f 81     lwz     r10,44(r31)
+  4c:   28 00 3f 81     lwz     r9,40(r31)
+  50:   50 50 29 7d     subf    r9,r9,r10
+  54:   b4 07 29 7d     extsw   r9,r9
+  58:   78 4b 23 7d     mr      r3,r9
+  5c:   40 00 3f 38     addi    r1,r31,64
+  60:   f8 ff e1 eb     ld      r31,-8(r1)
+  64:   20 00 80 4e     blr
+        ...
+  70:   80 01 00 01     .long 0x1000180
+```
+
+と出力された。

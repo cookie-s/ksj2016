@@ -1,0 +1,65 @@
+asm.s, main.c, Makefile という3個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.globl swap_gt
+
+# swap_gt の始まり
+swap_gt:
+    lwz %r5, 0(%r3) # %r5に第一引数（これはアドレス）の中身をロード
+    lwz %r6, 0(%r4) # %r5,%r6を適当に一時データ保管用に使った。
+    cmpw %r5, %r6   # %r5と%r6を比較。
+    ble ret         # もし %5 > %6 つまり *(&x) > *(&y) でなければ、retに飛んですぐ戻る。
+    stw %r6, 0(%r3) # 条件を満たすので、swapする。%r3の指す先に、%r6の中身をストア。
+    stw %r5, 0(%r4)
+ret:
+    blr
+
+```
+
+``` main.c
+#include <stdio.h>
+#include <assert.h>
+
+void swap_gt(int *x, int *y);
+
+int main(void) {
+    int x, y;
+    assert( (x= 1, y= 2, swap_gt(&x, &y), x == 1 && y == 2) );
+    assert( (x=10, y= 2, swap_gt(&x, &y), x == 2 && y ==10) );
+    assert( (x=-1, y= 2, swap_gt(&x, &y), x ==-1 && y == 2) );
+    assert( (x=-1, y=-2, swap_gt(&x, &y), x ==-2 && y ==-1) );
+    printf("you passed the tests!\n");
+    return 0;
+}
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main: main.c asm.s
+	gcc main.c asm.s -o main
+
+
+```
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIABDrRlgAA+2XW08aQRSAfe38ilMJBAzQXfZCgtXnvvTy2qRJg7AqEYHsLgXaNGGXNGr1oa2a
+xjSmsTbR1utT4wXrjxlAffIv9Mwu66Wt8oSm6XwPuzNnzmXmzJ5DEAV56F5PdxGQuKKwtxhXhItv
+jx5REmKioipSHOWiKKMIlC7vy6FomEkdoCeVz49lNONKvU7r/ygiu/+kMR7t4snYBauyfNX9i4Ig
+/3b/MUmK94DQvS2d85/ff3Qkmx/KglFKFp6PmIT4vCFQa7O5Mk2tn9R+S9rCBAEkW3oJfl0JgxD0
+61IIfGxGrbWj9fXGTrVZn2/Nb5/WJ6k1S+0Zam1R+wutTdHaOrV3T+tT6Lixs3G8t0btD7S2QWt1
+XL3gWHUdy23HYZSg5on1rXkwi1EwRGvBprUJZmgfNg4XjzaXjuZW2dLBIbWWqfWZVm3HYWq8UHK3
+ik5w3t7pquuytTV3XK95ukNZDXTNBA8fUNum1kfwKzAIfhUT8tXNBvQFA+UQCvFdCaF8hVrfqfXe
+Oe02rVroBndzsvyJ2rPO6gK13rUm96k97UUzzNL5UZ0cthaXGvs/2Lb2quwIzGiTWVctln02d8xR
+HRdaMxMoab7BLK+hBjvQxbTau7Q2yfJ+KZziZZbgDhPtU+vktr9Bzu3h9P/xZCYXTXUtRof+L6iS
+6PV/QRJU1v9lNcb7/03gy+RS2WJag/uGmc7ko6OD5FyUNAxNN5mMvMhn0t5PQzCTM6GvHAbnXQn1
+E8JG7CsKMr0QvHJ6CxOiVqXfmbnOghAsD4CI0gGIhc88BlAPe2kYyjCAyxAIQIWNYiEI/WEuCteb
+xzxzUfibeeT66JEO0V3zyJXmZ9Ej4pl5QcdcDAd7K/kiFJivNJijGpiaYRp3n+V622rYlYt6DoR+
+8vqmmrJT/w+TY9pwJqt1KUan+hex5t36V2RVjmP9S4LM6/9GiD558PjR0wQks1lC8JFwypgQ9nTH
+0RQ4/w/InZFU6pIEIvm29m2fgsPhcDgcDofD4XA4HA6Hw+FwOBwOh+PxCw360FUAKAAA

@@ -1,0 +1,84 @@
+asm.s, main.c, Makefile という3個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.globl prime_factor
+
+prime_factor:
+    xor %r4, %r4, %r4  # %r4をゼロクリア。これをループのカウンタとする。
+    addi %r4, %r4, 2   # %r4を2にセット。
+
+check_two: # あとあと奇数だけチェックするために、2だけチェックする。
+    andi. %r5, %r3, 1    # 最下位ビットをとる。この結果EQが立てば、引数は偶数。
+    beq ret       # 偶数ならば2を返す。
+
+    subi %r4, %r4, 1   # %r4を1にセット。次の加算のための辻褄合わせ。
+
+loop:
+    addi %r4, %r4, 2   # 偶素数は2だけなので、カウンタを次の奇数にする。
+    divw %r5, %r3, %r4
+    mullw %r5, %r5, %r4
+    cmpw %r5, %r3      # (%r3/%r4)*%r4 == %r3 をチェック。このとき、%r3は%r4で割り切れる。
+    bne  loop
+
+ret:
+    mr  %r3, %r4       # 結果は%r4に入っているので、これを返す。
+    blr
+
+```
+
+``` main.c
+#include <assert.h>
+#include <stdio.h>
+
+int prime_factor(int);
+
+int main(void) {
+    assert( prime_factor(6) == 2 );
+    assert( prime_factor(299) == 13 );
+    assert( prime_factor(307) == 307 );
+    assert( prime_factor(0x7FFFFFFE) == 2 );
+    printf( "you reaches last test.\n" );
+    assert( prime_factor(0x7FFFFFFF) == 0x7FFFFFFF ); // this is Mersenne prime.
+    printf( "you passed all tests!\n" );
+    return 0;
+}
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main: main.c asm.s
+	gcc main.c asm.s -o main
+
+
+```
+
+makeをして、できた実行可能ファイルmainを実行すると、テストが実行され、すべて通ることがわかる。
+一応実行時間の話を書いておくと、main.cの内容からわかるように32bit整数におさまる最大の数0x7FFFFFFFはメルセンヌ素数であり、
+prime_factorの実行には１番時間が掛かると考えられるが、情報科学科のcsp1の環境下では、実行時間は2.2秒ほど。
+奇数だけでループを回すようにして約半分の時間になり、さらにbreakのためのbeqとループに戻るためのbを使っていたのをbneにまとめることで、0.3秒ほど縮まった。
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIAMy4SVgAA+2XWW/TQBCA84p/xdIKKUXg+ohjEY43EC9cj0hIleO41KpjF9vhEELq2iBaDlEu
+IQSCchYRKIhLSFw/Zkjbn8Hsxm4SUCgvKULsp2jX2Z2dmZ3ZHSeqYlRHC4NFQUzDYL1qGkp3n1NQ
+dUXTdL2klcyCoqq6aRaIMWC/OI0otkJCCnYQTLpO1Fdurfl/FJXl34rq8gB3xhJcLpX65V81TP2n
+/Gu6oRaIMjiXOvzn+ZePekHVI1OhW3fGxi07DkJJ6v5WkQhyMgjJprC0ZbUhZJh1kFyD5DOkLyF5
+BelzSB7CdAL0OiSX2FTahBRnbwFdhKQJyVNI30LyDegzoLchuYjCXL1Vq7ld+jXSUa8BxYWfIE0h
+nWHykj3h2JNj8YmggkJAE66Nta0n55duvgY6D/QqpBSSBbYKHWvbovchoUzbNNX6CuUO+TVXRg8M
+5pG+haiEu7R0d/r7x4vfv1yG9HrmEe4S7fOVbN90cfn93NK9u7sPAb203ESrT4G+RpOtzze5c69a
+9AN7yAxVnWMkdGLSZphksxRDOYsLNdS/8u0Gc45tnclEjWp3rNSuWKk/xWrpxQN0qHVhfnmRpyCL
+wOLK108rj8+25tD7K0DvcNVeEExV+icD/Vp+N9/eQR49dJIpXcDd9WQ3uZYZzvLR7I1tzT1+oiu0
+aIQP1xuetzpudMbt+lRHPA9TEZ9HUWJkMzuLO3fyOX7iujKaZ4QfkMvoJQqh+yxWdKE1+waSC62Z
+8/yorjpX9R1CWCwkCdPSDkgd60Pu6mqi2mnO1TVb554AfcSzfZYftjww+V3oZJGb8ULpb199Dq//
+dcv1ZXtgNtao/zhnZPVfKymGxup/qWyI+r8eDLu+7TVqDtlhRZETxvLELqkzFsU1N2BDkuvHPS+J
+Ig6MbG+Ps+NTPB64tRFyul1BuKpi74LyCLunGsFVfWW0bdu4lKr/VkxXTC6G/W/llJPmHs7uXtso
+5MfjRTJ0Kmhg9bXwjRIRz4piEjtRLB/xh/5M7R6utvMVV5HRURJPuBHBzz4njBwfCwpfLf9qeoqp
+rxHL87jhaGOXZaw+jdAnynbpzCArBb//+6xJZ9z1nAHZWOv+q0o5u/9qySiz33+6opvi/q8H8sG9
+B/YfrrAzKEnYVPhtliTWtp9lm/D/B9KGo7bdM0K2Bpn0396FQCAQCAQCgUAgEAgEAoFAIBAIBAKB
+IOcHeLBOTgAoAAA=

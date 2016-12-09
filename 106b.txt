@@ -1,0 +1,80 @@
+asm.s, main.c, Makefile という3個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.globl mystrcat
+
+mystrcat:
+    subi %r5, %r3, 1 # %r3は戻り値にするので、%r5にコピー。
+
+find_tail: # strlen的な。\0を探して、その位置を%r5が指す。
+    lbzu %r6, 1(%r5)    # %r5をインクリメントしつつ%r6にロード。
+    and. %r6, %r6, %r6  # %r6がゼロだったら次へ。
+    bne find_tail
+
+    subi %r4, %r4, 1 # 辻褄合わせ。
+    subi %r5, %r5, 1
+concat:
+    lbzu %r6, 1(%r4)
+    stbu %r6, 1(%r5) # (%r4+1)から(%r5+1)に1byteコピー。
+    and. %r6, %r6, %r6 # コピーした内容が0だったら抜ける。
+    bne concat
+
+ret:
+    blr # 戻る。%r3は初めから変わっていない。
+
+```
+
+``` main.c
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+
+char *mystrcat(char*, const char*);
+
+int main(void) {
+    char s[1000];
+    assert( (strcpy(s, "pine"), !strcmp("pineapple", mystrcat(s, "apple"))) );
+    assert( (strcpy(s, ""), !strcmp("apple", mystrcat(s, "apple"))) );
+    assert( (strcpy(s, "pine"), !strcmp("pine", mystrcat(s, ""))) );
+    assert( (strcpy(s, ""), !strcmp("", mystrcat(s, ""))) );
+    assert( (strcpy(s, "uwaaaaaaaaaaaaaaaaaa"), !strcmp("uwaaaaaaaaaaaaaaaaaahyaaaaaaaaaaaaaaaaaaaa", mystrcat(s, "hyaaaaaaaaaaaaaaaaaaaa"))) );
+    printf("%s\n", (strcpy(s, "pen"), mystrcat(s, "pineapple"), mystrcat(s, "apple"), mystrcat(s, "pen")));
+    return 0;
+}
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main: main.c asm.s
+	gcc main.c asm.s -o main
+
+
+```
+
+makeをしてできた実行可能ファイルmainを実行すると、テストが通る。
+with updateのために予め1引いておいたりしたので、可読性は低い。
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIAMRxSlgAA+2XS2/TQBDHc8WfYklUKS4h2ImdSCnizIXHFVGEHMdtrTpOZDuggJC6ToH0wVNI
+iEdVSiOQWmgPvYDa8mWWpP0YzK7rNk4bVUVKEer+Dht7dva/MzvOOJGlXPFSbLBIQF5V6aecV6Xu
+z5CYnJUyGSUv5fJgl2VFkmNIHXBcjJrraQ5CMb1SmTQNt6/fcfP/KTKtv+aW0wPMjBY4pyj96i9n
+ZLWn/pksuCNpcCEdcMbrnx63KkULleuu5+iaJwjhVUFAgFsrmmjIUVMwZFNIRgl6QfB6p7lJ/Nn2
+VIvgVYLfEX+O4DWCv5IpDO7U6G+QxhvS2CJTviCMmXbprqeZVgEUYAPLsHfeTxO8ArOjEvFfd55/
+JvgtwV9AgOAFEPu9/Wxnew2mmN58Z/4p3QfEaFxW8UENIslBSEmYF6mNhqaCP/FbpLFB/HXSWCGN
+JXrdaDJxCLYFi2h0je80tMZMKKjZpXQgGA6BIDjPE3+L+uNPBC8TvEj8mc63JYJ/hGuLtoH2ExS6
+z01JBQM9t91fm7ut6fbLJvFfEPwhXNx9wjDIgl6x948/mqYiBiu8YjT3BKKTF2SR4DkIjhrZzapc
+rHtGpBB9Uk2gAy96UIvtJ4/baz8hdymS9uxHgl/RWndlHsQrCI6xF3TRckCQPSDUMXhe2s0F4uMg
+wHZrhp3BMi03Zk8BjCD5r78MZxDW/8uaaaf1ge1xbP9X5aD/ZzO5TFal/V/Jqbz/nwYJ09atWslA
+lzXXNRwvPXFFOLC5Xsms9Joc0x6nNkGfgJMbDl8YSXo7nKL9wPUQuxFHBMG0PUSfr+S9ilkS0UPW
+IthK97YM1b8zEjQltnsSJalYtZ50UyheNW0jLqbQeWorV5PMoFWrlhFP7b+xmGdgFEURif3lIlJ/
+L3NkVL1KJ4rlpItr97VDRASPcpioH7bBsp6t+3h1BVSF8ntjyfiQO2rD6sjJGDYNIyJ4ULLemaOt
+TEPc2wteKTXHRtKI8Ii/GwYD6//XtEljzLSMAe1xTP+XIIaw/6tKNgP9PytlZd7/T4P0zas3rt8q
+IM2CX64wFFizhr8BMAbXaR2x/4fCuXFdj1jQxcqe97/OgsPhcDgcDofD4XA4HA6Hw+FwOBxON38A
+s7mM/wAoAAA=

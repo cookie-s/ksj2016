@@ -1,0 +1,61 @@
+asm.s, main.c, Makefile という3個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.globl hello
+
+.section .rodata
+str_hello:
+    .asciz "Hello, world!"  # NULLで終了された文字列を配置
+
+
+.section .text
+hello:
+    addis %r3, %r2, str_hello@toc@ha # %r2にstr_hello(TOC base)の上位16bitを左シフトした値を加算したものを%r3にセット
+    addi  %r3, %r3, str_hello@toc@l  # %r3にstr_hello(TOC base)の下位16bitを加算
+    blr
+
+```
+
+``` main.c
+#include <assert.h>
+#include <string.h>
+#include <stdio.h>
+
+const char *hello(void);
+
+int main(void) {
+    assert( !strcmp(hello(), "Hello, world!") );
+    puts( hello() );
+    return 0;
+}
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main: main.c asm.s
+	gcc main.c asm.s -o main
+
+
+```
+
+makeをしてできた実行可能ファイルを実行すると、テストともにHello, World!が出力される。
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIAFN8SlgAA+2Wz27TQBDGc2WfYtoKKUHB+L+lFqFKXHooLQc4cEKObRKrjl15N4BAlbAjoCr0
+glRyhAOCAyI3VATq02xCxFuwtps0RCo5uaVifoe1/e3uzNizXxRFthrXKuUiCyzDyK6KZcjT1zEV
+RZNVVbcMS9MrsqLoilwBo+S6cjqU2TFAxYmiLd+jp66bN39BUbL+27QtlfhmWYNNXT+1/4ZpzfRf
+1Uy9AnJ5JZ3wn/dfagZRI4CWFwQRIRL1HOZHIUhx5NrMJpTF9/O5ZQICyaaO/wQW1zKpDo+iOHAX
+FgGWYOPu+jpPPo2+poPvL3hywNPXPHn38+3L4ZfecLfH0ze/nu+PjvpkOgnzHjMyFd52XZ/C5Vir
+i0GtwyT7Kouc1ZYt8gidJ58nE9U7mzehYVOvxpP+4Nve4GhfMRs+E/mGhx95esi7B7y7y5OeqGb4
+7EOm770f9XuFwtNU7BOiyCnC8vQH73bF+kk1MK5Gm60mgLwa7S/VvJquJs+ax20EMTnvtk/I/d+2
+/VBySssxz/+qZYz9r+q6mfnfkBX0/1mw5IdO0HE9uG5T6sVMat0gJ5o42X7YnNVcP8ok4kQhZeC0
+xPe7Upz/h5Hv1lYI8UMG2aEqBHha+ClPUIUFEdVpb1eLLbX67M9JDUSIbMN2h9EqHC8bi7HHOnEI
+8grZ+XdcdHHJ/X/L3vIe+IFXUo55/ldkc+L/7F4WD5qG/j8LpNtrmxv3lsEOAkLEsJz7lpBsLO4l
+B/L/h+RS03H+UOBqdLz6vN8CQRAEQRAEQRAEQRAEQRAEQRAEQZCM3zw25AwAKAAA

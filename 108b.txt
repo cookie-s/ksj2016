@@ -1,0 +1,91 @@
+asm.s, main.c, Makefile という3個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.globl saturate
+
+.section .rodata
+.align 8
+lower_bound: # 下限
+    .double 0.0
+upper_bound: # 上限
+    .double 1.0
+
+.section .text
+saturate:
+    addis %r3, %r2, lower_bound@toc@ha
+    addi  %r3, %r3, lower_bound@toc@l
+    lfd %f2, 0(%r3) # %f2に下限を入れる
+    addis %r3, %r2, upper_bound@toc@ha
+    addi  %r3, %r3, upper_bound@toc@l
+    lfd %f3, 0(%r3) # %f3に上限を入れる
+
+    fcmpu %cr0, %f1, %f2
+    bun ret # NaNならそのままリターン
+    ble ret_lb # 下限以下なので下限を返す
+
+    fcmpu %cr0, %f1, %f3
+    bge ret_ub
+    b   ret # 範囲に収まっているのでそのままリターン
+    
+ret_lb:
+    fmr %f1, %f2
+    b   ret
+ret_ub:
+    fmr %f1, %f3
+    b   ret
+ret:
+    blr
+
+```
+
+``` main.c
+#include <assert.h>
+#include <stdio.h>
+#include <math.h>
+
+double saturate(double x);
+
+int main(void) {
+    assert( saturate(-3.4) == 0.0 );
+    assert( saturate(0.375) == 0.375 );
+    assert( saturate(1.5) == 1.0 );
+    assert( signbit(saturate(-5.78)) == 0 );
+    assert( signbit(saturate(-0.0)) == 0 );
+    assert( saturate(-INFINITY) == 0.0 );
+    assert( saturate(INFINITY) == 1.0 );
+    assert( isnan(saturate(NAN)) != 0 );
+    printf("you passed all tests\n");
+    return 0;
+}
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main: main.c asm.s
+	gcc main.c asm.s -o main
+
+
+```
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIAPQET1gAA+2XTWsTQRjHc3U+xdhSSKAdZ3eySUmt1IvYg9GDl4JQZt/SpZvdsDurFfGwaT3Y
+iop4KeJJqqCgoBdBsR9mW9Rv4ezO5rVJc0pLcX5k3yb/mf/z7Ow82Sh4Ub9SmC6YU9W09KhUNdx/
+7FBQCFZJhW9quYAVhVS1AtSmHFdGFDIaQFgwfH/TscKxuknfX1CUdP5p2ERTzCyd4Eq5PG7+FaJW
+huZfJWVSgHh6IfX4z+cfNVxfd2FIWRRQZgGAQstgju9BFPgmZRQg6joNDy4C139gBeu6H3lmDc7C
+o+97f/dfAshBph/prgUxwiBqtQZVu8Mqhav6bJi1xUDHv5YpqWk6IZwLyDzfqfOwz3mF+cbKBu3K
+YEdGTsrcTOXaJpyz+Si4yFUlHhO/SuJPIv6k/er4yUHSfpa090Z69+VzmvewrN+bDHiTzHt32DvT
+20azFcE5I8B8WFtJd2r2hR55MLAYH6BO60n8MWk/TeK3Sfw5iX+ln23ecphs/0y2vwk9v89cv+7q
+3Zk6+nHAT9K+aa8P3fT/HL5O4v2x/kSM1xDjRbq45JsI5/eXneM3X3lKxy+eZ7G8S+L3SbzDUxI+
+p4YJRIxi1u1mMJS0cAHC+ISIDItqeeoBOO9VdXHI6n+TOh4ypuYxof7jKi/2nfqPqySt/+WqKuv/
+WTDreIYbmRa8SsPQChjauAZ6bSEzHX+wqUnZRtoC8mreqdzF/HqrtASA4zGYPlTF+75jluAjUTIz
+g2KvxwJB5RJcXk5/NyDvNlKEEX8XzFX8bKxOQUKljBiL/37pDiv2jDVUXSyJQSeLeXTjtF3Nav3G
+an317trEdAaEI2J1Qo96PfP69Tr3vtzn3Qr4zbWLMw/9CLbSXiakrguZFbLwnjeTq3g1jAIP4iXw
++PRimK3/W3TTsh3XmtIzNmn9Kzh//9MqFVWp8PVPsHz/OxvQnZu362u19BkCgO9q2boFIN2Lc2TA
+7P8BuNQwjIEWuODn6vPOQiKRSCQSiUQikUgkEolEIpFIJBKJRNLhH0zF92MAKAAA

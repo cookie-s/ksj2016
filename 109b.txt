@@ -1,0 +1,89 @@
+asm.s, main.c, Makefile という3個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.globl puts_twice
+
+.section .text
+
+puts_twice:
+    mflr %r0             # link registerの内容を%r0へ。
+    std %r0, 16(%r1)     # それをスタック上に退避。（callerのスタックフレーム上）
+    stdu %r1, -48(%r1)   # 48bytesのスタックフレームを確保。元のスタックフレーム先頭アドレスも同時に退避される。
+
+    #  0 | saved sp
+    #  8 | for puts to save cr register
+    # 12 | (align)
+    # 16 | for puts to save link register
+    # 24 | for saving toc base
+    # 32 | for saving one local variable
+    
+    std %r3, 32(%r1) # %r3をputsに破壊されるとつらい
+    bl puts
+    nop
+
+    ld %r3, 32(%r1)
+    bl puts
+    nop
+
+    ld %r1, 0(%r1)  # スタックフレームを巻き戻し
+    ld %r0, 16(%r1) # 戻り先を読み込み
+    mtlr %r0        # link registerにセット
+    blr             # 戻る
+
+```
+
+``` main.c
+#include <string.h>
+#include <stdio.h>
+
+void puts_twice(const char*);
+
+int main(void) {
+    char s[10]={};
+    puts("output empty string...");
+    puts_twice(s);
+    puts("output Hello!");
+    strcpy(s, "Hello!");
+    puts_twice(s);
+    return 0;
+}
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main: main.c asm.s
+	gcc main.c asm.s -o main
+
+
+```
+
+関数putsを内部で呼ぶために、スタックフレームを確保しなくてはならない。
+引数は%r3に与えられ、これはそのままputsに与えればよいが、
+%r3は揮発性なのでputsに書き換えられても文句は言えないため、
+ローカル変数としてスタックフレーム上にこれを退避しておいて、
+1回目のputsが戻った後に%r3を書き戻し、2回目のputsにも同じ引数が渡るようにする。
+この1つのローカル変数のために、48bytesのスタックフレームを確保した。
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIAJ32UlgAA+2XS2/TQBDHc2U/xdAIKUHB2LGdlBY4c+FxRQghx3GDVdeO7E2hgkq1TVFaioSQ
+KsQBqQIOiNJyQeLRiHyYJUBPfAVmHYck0DantCD2d/Bj9j87uzs7G0eRz1ROZ8aLjJR1nd+Vsi4P
+3ntkFFUuanpZLapKRlYUTVYzoI95XAmNgBo+QMb0vFnbCvbVjWr/R1F4/o1gThrjzHiCS5q2X/4V
+XS/9lv+iiiaQxzekPv95/qWa41UcqDdocIPesk2LECmwTGp7LkjUuk0J6bdNEUDmZhwfTvgyDJIF
+x3ZnwbdqdkAtn4XbnfvLne2PLHqMUhZ+YEtR4h3QKncugFLKnfCVfOrNwmcsWkM1i9CnzeKYRW+/
+fFhl4ebu0tJu2Eb/H62maThO0vugjMXrLH7D4haLN9DlR2ulF6mBoZQCnNIme7GyoE1WFqgVHNAH
+juLb809f2s8wZmc5PkDZWW7ubmyx6DmLV7iRy6LOo7WvT6P+wMP1ZGYP+AqQ7mxBhrsQGPNWFYJ6
+zzaJthnPT3IB1EvawfR/rWmqU4qoyxmOXXPzPVNpL9ehhKTKopYqUWG7NdSaUDECK21Wi8PNnovd
+eLjoMG/4tlFxusKBRKoFdOoubpa/4trxQeDsv22867xY7c8+fMXClyxaYeG9xD/ddcmz69W7S+MM
+9zlCiKmV08TiDto/m533Oyx8+LWJ1yd974E9mAXeGK1iPlH+/fUWC9vfP7fw2t3xdHjH/7HZN1m0
+wyPHzXTE/m/FkXT/gBx1tf9Jcv7PGbYrmWOLMeL8l9Wy0j3/8djX8ODH81/HTwJx/h8CWds1nUbV
+grMB9bHkpZvnyaCtanvcROY9uzrwK5EzPTegYN40/JP5aUJslwLfRTmuy8OdpAx4KwTXFPn6uTuL
+04mJ95Cb8BoUH8Caq9MFSONK0kS+r0mjBPk93C5YjuMd76nR3awv5IICTAw37NGNb9GG74I8TRb/
+wlI8EpL6v2jMWjO2Y40pxqj6V+T0+09WdZ3r8EUT9X8oSFcuXL50dQrwu4oQvEwlZUwIv3afJROS
+/wfkWM00hyxwykvVRz0LgUAgEAgEAoFAIBAIBAKBQCAQCAQCQY+fOy2rewAoAAA=

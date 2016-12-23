@@ -1,0 +1,145 @@
+asm.s, main.c, Makefile という3個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.globl mmul
+
+.section .text
+
+# start mmul
+mmul:
+    # %r3 : m
+    # %r4 : n
+    # %r5 : p
+    # %r6 : a[m][n]
+    # %r7 : b[n][p]
+    # %r8 : c[m][p]
+    
+clear:
+    li %r9, 0 # %r9 for 0...m loop counter
+clear_m_loop:
+    li %r10, 0 # %r10 for 0...p loop counter
+clear_p_loop:
+    mullw %r11, %r9, %r5
+    add  %r11, %r11, %r10
+    mulli %r11, %r11, 8 # sizeof(double)
+    add  %r11, %r11, %r8 # &c[%r9][%r10] == c + sizeof(double)*(%r9 * p + %r10)
+    li %r12, 0 # 0x0000000000000000 is 0.0
+    std %r12, 0(%r11)
+
+    addi %r10, %r10, 1
+    cmpw %r10, %r5
+    blt clear_p_loop
+
+    addi %r9, %r9, 1
+    cmpw %r9, %r3
+    blt clear_m_loop
+
+mmul_main:
+    li %r9, 0 # m
+mmul_main_m_loop:
+    li %r10, 0 # p
+mmul_main_p_loop:
+    li %r11, 0 # n
+mmul_main_n_loop:
+    mullw %r12, %r9, %r4
+    add  %r12, %r12, %r11
+    mulli %r12, %r12, 8
+    add %r12, %r12, %r6
+    lfd %f0, 0(%r12) # a[%9][%11]
+
+    mullw %r12, %r11, %r5
+    add  %r12, %r12, %r10
+    mulli %r12, %r12, 8
+    add %r12, %r12, %r7
+    lfd %f1, 0(%r12) # b[%11][%r10]
+    fmul %f0, %f0, %f1
+
+    mullw %r12, %r9, %r5
+    add  %r12, %r12, %r10
+    mulli %r12, %r12, 8
+    add  %r12, %r12, %r8
+    lfd %f1, 0(%r12) # c[%r9][%r10]
+    fadd %f0, %f0, %f1
+    stfd %f0, 0(%r12)
+
+    addi %r11, %r11, 1
+    cmpw %r11, %r4
+    blt mmul_main_n_loop
+
+    addi %r10, %r10, 1
+    cmpw %r10, %r5
+    blt mmul_main_p_loop
+
+    addi %r9, %r9, 1
+    cmpw %r9, %r3
+    blt mmul_main_m_loop
+
+ret:
+    blr
+# end of mmul
+
+```
+
+``` main.c
+#include <assert.h>
+#include <stdio.h>
+
+void mmul(size_t m, size_t n, size_t p, const double a[m][n], const double b[n][p], double c[m][p]);
+
+int main(void) {
+    double a[2][4] = {
+          {21.64, 5.88, -14.4, -2.15},
+            {12.3, 3.77, -18.1, 5.06}
+    };
+    double b[4][3] = {
+          {-2.23, -5.74, 9.37},
+            {-6.05, 20.1, 5.28},
+              {24.9, -4.58, 14.9},
+                {-4.39, 9.55, -0.869}
+    };
+    double c[2][3];
+    mmul(2, 4, 3, a, b, c);
+
+    printf("%f %f %f\n", c[0][0], c[0][1], c[0][2]);
+    printf("%f %f %f\n", c[1][0], c[1][1], c[1][2]);
+    return 0;
+}
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main: main.c asm.s
+	gcc main.c asm.s -o main
+
+
+```
+
+loopを回すだけ。
+%r3 - %r12がvolatileらしいので、引数として与えられたものも含めてこれらと浮動小数点数レジスタで全部回した。
+非揮発性レジスタの退避を厭わなければ、無駄な計算を省いてもっと効率的にできるはずではある。
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIAG36UlgAA+1YbW/bNhD21+lXHBqksDuZJalXJ+s+98vafR00I5BlqROqN0jyWjTIf9+RlGRJ
+sRdkiDsM4wODFo93vIe8I082Y3z3dnFZUITnOOKbeQ4df/dYMIty2/E459aCMmZ5zgKcC/OSODRt
+WAMsorL8nMbNWb2nxv+jYCL+YZOTC65MBNi17XPx567HZ/HnFg4DvRylI/7n8SefsnKXQZ4fMsMg
+TRy1aVkAaeOvrWFcgdicVo2K5sYAxBVc1xbcQD70bOwVQ8/BXjX0XOyFQb4Niu0g81C2Q0FQHWU+
+yiKh18mMKIvDWnnMUlTYmECl5gaSsgZKCMkhK8sKovJQtHGtLO7yOyEcGTLaWzI6mFanTKuRKS43
++yJsmKmc48LkQLjfwyDvWjqYpJMhH9026be4TJb78rDL4tW5KYTm6yhAT9tATLiFd+8ggh9n5m+W
+Yv1voMIRobYaLZOrZdKvdAZIG1yz4ti0+153KXyvjJ5Rv1WqZVIc5dWXQayWv8taGO/WxH7T7dXE
+WgqtmXHeGYu0usvDtHgc6fw4eD6o1UipeqTElFIxUipOxZgPMbYnAZLyrmXTGA9D/mAxNXAVjwTl
+Ce22m6+QTRhciyAztjVOsFDp4JylQZ9JwxvRYGMaO0lBJZvUSXBSxbVr2Cl+J07C8+jNLPxz/MaH
+QfGTi5vwUxk92+JpRg9nbJrR7BhskZTz/Pgnp2KeiM8+GfN0N4w6bm+64Rqv47jYQ5mo+/hl7n9Z
+/4VLEr3MhCfwRP3Htz2nr//UxRc/rP+25+r6/z1wlRZRdtjH8FPYNHHdkj9+No4yLBZpKUTGn2W6
+l3m3FPXoDnPVhO6pGJ4qE+tp0bSgilVf9mfSrvCbfb8r+qtbw0gLnBiTcSncreBepv4wGd8GNpbF
+TqxwzxlxbRMc4vsmrJlNsLPmhDkP5kgNFRknlgkW8Tyh5xMmjKj7ILUebseudugnsB65wmk5TrF2
+iIdONsTy5j7WLqGOCZyq2bk/UxB8bYKnfm0TB/ki3c0jFTGPTayNcOHgbGtKfHdzimcktsTaKpkM
+Dt6oSA1JhibscN/FporBqsatTZavrhOQn9+LVzga0C1+ugfWP3ARir8xYr0R643YyAhvrENdAL01
+Hl7oitK4IOT9/0v4OU7SLL6Qjyfuf8qo293/LuPifwLsYEnQ9/93APn1/ccPv+EvtAx//2FzI+9f
+fC0Xb+SgXgxA/j9g/PApiiYSWJed9r+9Cg0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NjTn+ArZn7jQAKAAA

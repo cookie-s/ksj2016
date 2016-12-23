@@ -1,0 +1,87 @@
+asm.s, main.c, Makefile という3個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.globl ntimes
+
+.section .text
+ntimes:
+    std %r31, -8(%r1)
+    std %r30, -16(%r1)
+    mflr %r0
+    std %r0, 16(%r1)
+    stdu %r1, -48(%r1)
+
+    mr %r31, %r3 # n
+    mr %r30, %r4 # f
+    mr %r3, %r5 # x
+
+loop:
+    and. %r31, %r31, %r31
+    beq loop_exit
+
+    mtctr %r30
+    bctrl
+
+    subi %r31, %r31, 1
+    b loop
+
+loop_exit:
+    ld %r1, 0(%r1)
+    ld %r0, 16(%r1)
+    mtlr %r0
+    ld %r31, -8(%r1)
+    ld %r30, -16(%r1)
+    blr
+
+
+```
+
+``` main.c
+#include <assert.h>
+#include <stdio.h>
+
+int ntimes(int,int(*)(int),int);
+
+static int doub(int x) {
+    return x * 2;
+}
+static int collatz_step(int x) {
+    return x % 2 == 0 ? x / 2 : x * 3 + 1;
+}
+
+int main(void) {
+    assert(ntimes(4, doub, 3) == 48);
+    assert(ntimes(77, collatz_step, 27) == 9232);
+    assert(ntimes(0, collatz_step, 27) == 27);
+    printf("you passed all tests.\n");
+    return 0;
+}
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main: main.c asm.s
+	gcc main.c asm.s -o main
+
+
+```
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIAOkBWVgAA+2WW2/TMBTH84o/xdGmScnIMjvX0TF45YXLKxLSlIs7orlxSRxUQHx3bCdVU2jV
+l7UIcX5SHefv4+Nz7Jw0jEXFtXNcqCZLEnNlWUKn1zUOi2gYZ2lE08yhjMU0dSA5clyWvlN5C+CU
+Uj7WvNtrd2j8H4WZ88+7RXDEzMwBp3G89/zTJPvt/MMoDR2gxwtpw39+/sGDkIWARtUL3hESdLxU
+tWwgUHylyCDPCGg6VcFFGzEfrm7ci5Z5U5VqlaUbeTEXrdbpxEabTC202GvVuItHf8PMdlxFt3AO
+zUSkRoy1OJ+IRku0tiJESLkcYs2bKti4GVs7UvAvYOzu+apW44qqVIP/wULfiWGk64t6y83ow3oY
+1rN+hkVFNeRDN0mKHYkv1GRrxK49FTu3tBAtIU9+/rb+F3ndBOWT+15zsP7DZF3/oR4y9R+nMdb/
+KTivm1L0FYeXedfxVgWfX5GNpou0lkYidaPGl4Sru77+uZee6Xqm790SovdR1SUYw0r2hRmDlQc/
+7MPbctW3DazgEsJb8nNqXEohcvX9vlN8uWfSBYRwdwcUXuuba30zs54ieA7MeLPRmYfY/Srraj19
+SMgdo459G5YPkWd8xTc65j+tsszfCsiHMLP2L8Io3DmD7pmgL4P5stXRzd2zb7KHpZlbQS4EKN6p
+LvjUnI1mY7LU5HPC87f1/zZ/5PNa8COtcaj+mf7Ys/Wf0pTZ//+IxhTr/xQEH968f/dxZh5JQnQz
+s3VEiGmHflCC/T4kzx7KckuBKzla/+0sEARBEARBEARBEARBEARBEARBEAQx/ALZWdG6ACgAAA==

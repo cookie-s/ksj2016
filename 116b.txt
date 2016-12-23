@@ -1,0 +1,110 @@
+asm.s, Makefile という2個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.abiversion 2
+.globl _start
+
+.rodata
+your_name:
+    .asciz "Your name: "
+hello:
+    .asciz "Hello, "
+
+.data
+    .space 1
+buf:
+    .space 65536
+
+.text
+_start:
+    std  %r31, -8(%r1) # 誰のためでもないけどまあ一応退避。
+    stdu %r1, -48(%r1) # stack frame
+
+ask:
+    li %r0, 4 # write
+    li %r3, 1 # stdout
+    addis %r4, %r2, your_name@ha
+    addi  %r4, %r4, your_name@l
+    li %r5, 11 # count
+    sc
+
+    li %r31, 0 # counter
+
+read_128:
+    addis %r4, %r2, buf@ha
+    addi  %r4, %r4, buf@l
+    add   %r4, %r4, %r31
+    lbz %r5, -1(%r4)
+    cmpwi %r5, 10 # LF
+    beq say
+
+    li %r0, 3 # read
+    li %r3, 0 # stdin
+    li %r5, 128 # count
+    sc
+    add %r31, %r31, %r3
+    bge read_128
+
+say:
+    li %r0, 4 # write
+    li %r3, 1 # stdout
+    addis %r4, %r2, hello@ha
+    addi  %r4, %r4, hello@l
+    li %r5, 7 # count
+    sc
+
+    li %r0, 4 # write
+    li %r3, 1 # stdout
+    addis %r4, %r2, buf@ha
+    addi  %r4, %r4, buf@l
+    mr %r5, %r31 # count
+    sc
+
+    li %r0, 1 # exit
+    li %r3, 0 # success
+    sc
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main.o: asm.s
+	as asm.s -o main.o
+
+main: main.o
+	ld main.o -o main
+
+```
+
+Makefileを読めば、asとldを使っていることがわかる。
+自分しかいない上、exitで終了してしまうので、stack frameと%r31の退避は正直いらない。
+
+bufは一応65536bytesの領域を確保している。これ以上長い名前の持ち主はおそらくいないだろう。
+これ以上長い文字列を入力するとどうなるかはセクションが置かれた位置のアクセス権と配置に依る。
+
+read onlyのつもりで.rodataというセクションを置いたが、少なくともcspでmakeしたときは、
+特にr--な領域がmapされるでもなく、rw-な領域に、.rodataも.dataもまとめて置かれてしまった。
+もしも.rodataが.dataよりあとに来ていれば、bufに大量の文字列を入力することで、 .rodata内のhelloなどを書き換えられてしまうだろう。
+しかし今回はそうはならず、.rodataの次に.dataが来ていたため、ページサイズ程度まで入力すれば、おそらくアクセス違反で落ちる。
+
+
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIALV1WVgAA+2WS2/TQBDHfe1+ilFRJSo5xutHEuXECfXA69pTtLE3rZVNXLw2fZziiC/AHYkj
+ogfEkRP9MAaJfgt2vXUehVCESCvE/BTZzvzHM7Mz0W4obQ8eWJvFVXTCUN9pJ3SX7w0W9V2v7XW8
+0PMtl9LA9S0IN1xXTSFzlgFYUZqOEi7X+t2k/6NQPX8mx84GV6YH3A6CdfP31Ofa/D0/oBa4mytp
+wX8+f4cNkpc8k0k6AY84ByIdCOjrnuSEOFkas5yR07TI+hM25j0CCofJKDmD7X1lhtoM2+SQC5Gu
+6nvaZCuNOHWYWpNHLOJAyaAY9pYt7TD028oz5yc5MQUYXeYxwE7mUxta3fs7Gd2Fe/Dt/GNVfqjK
+t9WsrMp31WxWledV+aoqX1fl+6r8XJWzL5+mXy/eXE6nl+VFNZ01wQoVTMcK5sFUsmgEw0ythBAm
+RyavSJSja0OgPI6zJOcLq28Drd+L0yKvzSyOE6mUwFYXz4Z5xx4esrkDNA7BsoNYxA1VXB04SouJ
+iSsjspRWle02Ms8IyTiL+9Tr9n5ag+rwuuxaEo0Cy4rOYjIOzkxFLar6FOzWxmh8dNwUqit5/Kg2
+D/gLkOyUrPTNV7oucKVtrmlbMlldtNe9vuqmNrPq+dWkO+DQLJ0QlfgvDKz++a5rlxFXB9VZP6c/
+reG3BjbOTH7dkl+WoFV+kuQ/9r+IIi5l89Jd70DIXVKf/0/YiA8TwTeU44bz36W+f3X+Ky9K1fnv
+u36I5/9t4Dzfe/Z0vwdMCHX2CdGDMVO7M9FXJ1V2/deQbDFpnqCVgpGMS6/5tiXiq8fGBTcWBEEQ
+BEEQBEEQBEEQBEEQBEEQBLltvgMyYvZMACgAAA==

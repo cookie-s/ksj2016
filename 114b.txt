@@ -1,0 +1,71 @@
+asm.s, main.c, Makefile という3個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.globl print_cwd
+
+.section .data
+buf:
+    .space 1024 # 1024bytes確保
+
+.section .text
+print_cwd:
+    mflr %r0
+    std %r0, 16(%r1)
+    stdu %r1, -32(%r1)
+
+    li %r0, 182 # getcwd
+    addis %r3, %r2, buf@toc@ha
+    addi  %r3, %r3, buf@toc@l
+    sc
+    # man 2 getcwd だとbufが帰ってくるっぽいのに、実際のところはサイズが帰ってきている気がする。
+
+    li %r0, 4 # write
+    li %r3, 1 # stdout
+    addis %r4, %r2, buf@toc@ha
+    addi  %r4, %r4, buf@toc@l
+    li %r5, 1024
+    sc
+
+    ld %r1, 0(%r1)
+    ld %r0, 16(%r1)
+    mtlr %r0
+    blr
+
+```
+
+``` main.c
+void print_cwd(void);
+
+int main(void) {
+    print_cwd();
+    return 0;
+}
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main: main.c asm.s
+	gcc main.c asm.s -o main
+
+
+```
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIANcBWVgAA+2XzWvUQBTAc3X+igel0MI2ZvKxK9tLj178uHqSbJJdQ7ObksxaRYRO6E2LBw+i
+IoqKFITaiyAF8Y8Zq/hfODPZbHbVugdJS/H9DvPx3subj5f3skup27toNIsl6Xie6mnHs2b7CoM6
+lu122l6HUsOi1LU8A7yG96UZ58zPAIwgTTfjKD/RbpH+nEJV/P18aDZ4MhXgtuueFH9Kf4u/7bjU
+AKu5LdX85/E3B0naS2Ari0fsZrAdEmLmUcDidARm6DOf9Mb9LgGJmW/5QQRUxgmWdNe7y6L8++uj
+r19ezD7GojuMTB2WDw/7SQbLmaUnOQvVuAW0vbKc0dVKOJZS2oI1xy7FWp7EE9tLtlx2EDG1SaXw
+wzDOpc5pycZugdzoBkuDjVv+VA2V2qnVSblaoLslGPojsCduQfBXgu9LS8EfHn86FPyN4O8EfySK
+B3r8WfBdwQ8Efy92+PHByx/PnuvpvuCPRbEn+AdRfBTFW1EczXvY0+2u9PPt8IlUCf5U+dwp5s+o
+LnY7i1lUS+XOqZTK20nHbO7c7t/PrdXur+fWPr2WDl91EaUiLC/fqiOS/CFKQzYTx16SkbN+f5F/
+Q9f/oR+PzKCxNRbUf/kBoFX9dzzqqPrvtl2s/6fB7TQO6+q/oqar64TIOai3ohTAPZ3vtZk0UYIs
+YuNsBNY6uY+F4Hyi8/+Kvxn14yRqaI2F+W+1p/kvf/nL/HcsB/P/VDCvX7529UYX/CQhRDZdnfaE
+qLYcmwHo/wfkwiAI5iSwlk6sz/oUCIIgCIIgCIIgCIIgCIIgCIIgSMVP8O0ZfQAoAAA=

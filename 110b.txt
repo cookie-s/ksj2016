@@ -1,0 +1,105 @@
+asm.s, main.c, Makefile という3個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.globl fib
+
+
+fib:
+    cmpwi %r3, 1
+    beq ret1
+    blt ret0    # fib(-1)は0です。
+
+    #  0 | r1
+    #  8 | cr
+    # 12 | (align)
+    # 16 | lr
+    # 24 | r2
+    # 32 | two local variables
+    # 48 | (next stack frame)
+
+    std %r31, -8(%r1)
+    std %r30, -16(%r1) # これはスタックフレームから見れば+32の位置。
+
+    mflr %r0
+    std %r0, 16(%r1)
+    stdu %r1, -48(%r1)
+
+    mr %r31, %r3 # 引数を退避
+    subi %r3, %r31, 1
+    bl fib  # fib(n-1)
+
+    mr %r30, %r3 # 第一の結果を退避
+    subi %r3, %r31, 2
+    bl fib  # fib(n-2)
+
+    add %r3, %r3, %r30 # ２つの結果を加算、これを戻り値に。
+
+    ld %r1, 0(%r1)
+    ld %r0, 16(%r1)
+    mtlr %r0
+
+    ld %r31, -8(%r1)  # 非揮発性レジスタを戻しておく。
+    ld %r30, -16(%r1)
+    blr
+
+ret0:
+    li %r3, 0
+    blr
+ret1:
+    li %r3, 1
+    blr
+
+```
+
+``` main.c
+#include <assert.h>
+#include <stdio.h>
+
+int fib(int);
+
+int main(void) {
+    assert( fib(5) == 5 );
+    assert( fib(15) == 610 );
+    assert( fib(42) == 267914296 );
+    printf("you passed all tests.\n");
+    return 0;
+}
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main: main.c asm.s
+	gcc main.c asm.s -o main
+
+
+```
+
+この関数の仕様として、負の値に対しては0を返すことにした。
+こうすることで、関数はじめでの比較が一回で済む。
+退避すべきは自分に与えられた引数と、1回目の再帰の結果。
+このために非揮発性レジスタ%r30, %r31を利用することとし、
+これらの元の内容をスタックフレーム上のローカル変数領域に退避した。
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIANv2UlgAA+2XzU8TQRTAe3X+igmEpI20zuxX+RDPXvy4mnjZbre4YdrF3S1o1KS7vShoMBhC
+SJRwMHCQFC4mqBD+mIFWTv4LzuzOtoWAeKmEOL/D7L6PefNm3r5JFmNUupUZLIhR1HX+xEUd9T9T
+MlhFiqZoGGtqBmGsGnoG6gPOK6buB6YHYcZy3RnH9i/0u8x+TcG8/qZfLQxwZ7zAhqZdVH+sK8aZ
++iuqyuqPBpdSj/+8/oVp4pYIrDglAAAbJwBkWNXZeQeOeOooxLGiZD+Fnh0IgQRcQPx9mE/N5nGO
+hjuIhls0XKONCIDEBhF8CT2cSmNMsjwhYYVJWZM407VcqjKYiqQOisYnK0JSuXsw70LiWiaBc6bn
+mCVi+8Ks8djZmv0sgKyg1gyseGbVziWJ+EGZbwaPwvxYdsTDuX4tYlpsxGoWh4YfaPSWbYZG32h0
+SJtNGu3Q5gptbtPmPm1u0HCRRm9+bi7Gbrs3VYWGraODd52DVnfj1QrxWGjUtwxbRSySKutMyzPS
+RErJTE8kykaWzfH+Sntll0bLJ43GSXiYTK2XRGkSz7QmvBBpPWr50wFRGrCzvX2012AZd76+b69/
+/HNk5dzIiohslstd53hAzOXX/jINP/fHP17Y6LRWaSMUJxstt1//oNHCcYO5fekeGSknx4F6Z0TO
+ObdqIE6259FXVp7kyaf19lKrs/a93djiRYv2RCWThcNVGm7ScIGGS3ztXpS+z0Bs2wOAf+VJRxBx
+Mqhr5O1w2oa7tqvu6r8nvv+rplMrWANb45L7H6mqJu5/VTe4Hiuaocr7/18w7NQsUi/b8Lbp+7YX
+FJ7cAT0du6Ycl6uAUwvi/mfP3GQi8q8mO+c65Rx8kdwIcYRs7Kfn4NQU1CFzPmvCic3A6DyrpsRW
+xSiOY00ZN1KfWY+tWckOPXfrcJZPKEOTEBjYfuAXHteGhBvryrpXg2gSvLpGXXh1xP1/z5yxKw6x
+B7TGZf2PkdHtfx0zPy4UZf//CwoP7z64/2iC9xIAbJiI2xoAPibvBQvG/wfgxrRlndLAvCu8r3oX
+EolEIpFIJBKJRCKRSCQSiUQikUgkkpTfO6jUsAAoAAA=

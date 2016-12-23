@@ -1,0 +1,68 @@
+asm.s, Makefile という2個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+.abiversion 2
+.globl _start
+
+.rodata
+path:
+    .asciz "/etc/passwd"
+
+.text
+_start:
+    li %r0, 5       # open
+    addis %r3, 0,   path@ha
+    addi  %r3, %r3, path@l
+    li %r4, 0       # flags: O_RDONLY
+    sc
+
+    li %r0, 90      # mmap
+    mr %r7, %r3     # fd: return value
+    li %r3, 0       # addr: NULL
+    lis %r4, 1      # length: 65536
+    li %r5, 1       # prot: PROT_READ
+    li %r6, 2       # flags: MAP_SHARED
+    li %r8, 0       # offset: 0
+    sc
+
+    li %r0, 4       # write
+    mr %r4, %r3     # buf: return value
+    li %r3, 1       # fd: stdout
+    lis %r5, 1      # count: 65536
+    sc
+
+    li %r0, 1       # exit
+    li %r3, 0       # status: EXIT_SUCCESS
+    sc
+
+```
+
+``` Makefile
+.PHONY: all
+
+all: main
+
+main.o: asm.s
+	as asm.s -o main.o
+
+main: main.o
+	ld main.o -o main
+
+```
+
+/etc/passwdを65536bytes読み込み、終了した。
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIAMOqXFgAA+2WUW/aMBDHea0/xanT3liIk5hseRpqkTqJAoJWWp+QIYZGNTGKnbbqp5+TNCRD
+Y32i07b7PTiB++d8fx85QWm47HVOi2sJGSuuNGRu+1rTob7rhdRjnmd1lAYu7QA7cV0luTY8A+is
+lHpIhD6qeyv+l0KL/nO9dU7orGhwPwiO9d92nR303/NtGNzTldTwn/ff4cvkUWQ6USl4xNlItZSw
+KM7EEOJkKuaGkx039xEBi8P1KnmB854wq96Oa/0Un1udEc+GVE9VOpnAx8ztAoOKD6B2Ii1DPI4T
+baN+F6wAoEj+9Z7vY1DFyqWMySZjYJ/ZZ1xLvtERTBazy8l4dFeq9Ir8tP8Xt1Zvt3xXhraZDYXl
+BnWiOIJMmDxL4ZHLXDQZ/PZ+trgsgvHtaPQq0FVFtBZIkW7sQUGfMb/fJGF7idXsMmUimM4mN4vZ
+cHDZqPpd8A6tXQ+mi/nVYDZs6T63S1LrtRY2n/tL88Fe95QlRjTug7b7Zb7+jf2m8uKUtIlVblr2
+Wcv+SuWpabs/rKfJJZ4Tc+SU7Y/I5Nb78Pu3m8X89uJiOJ/X2f70y/IPUs7/a/4g1okUJ9rjjfnv
+Ut8v53/fC31GfTv/fTegOP/fA2d6NRnfRcClJMQuEWx5khJSrI6y3xd/DcgZ19UdfFJQhSpJVH86
+k/HrbS3BtxVBEARBEARBEARBEARBEARBEARBEOQ9+QGDfkjWACgAAA==

@@ -1,4 +1,4 @@
 let g:quickrun_config['asm'] = {
             \   'exec' : './testasm.sh %s'
             \ }
-let g:syntastic_ignore_files = ['\m\.s$']
+let g:syntastic_ignore_files = ['\m\.s$', '\m\.S$']

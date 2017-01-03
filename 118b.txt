@@ -1,0 +1,145 @@
+asm1.s, asm2.s, Makefile, script.ld という4個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm1.s
+    .abiversion 2
+    .globl _start
+    .section ".text", "ax", @progbits
+_start:
+    li %r0, 4
+    li %r3, 1
+    lis %r4, msg@ha
+    addi %r4, %r4, msg@l
+    li %r5, 14
+    sc
+ 
+    li %r0, 1
+    li %r3, 0
+    sc
+ 
+    .section ".message2", "a", @progbits
+    .ascii "ll"
+    .section ".message1", "a", @progbits
+    .ascii "or"
+ 
+    .section ".rodata", "a", @progbits
+    .ascii "He"
+    .section ".data", "aw", @progbits
+    .ascii "ld"
+    .section ".bss", "aw", @nobits
+    .long 0
+
+```
+
+``` asm2.s
+    .abiversion 2
+    .globl msg
+ 
+    .section ".message1", "a", @progbits
+    .ascii " w"
+    .section ".message2", "a", @progbits
+    .ascii "o,"
+ 
+    .section ".rodata", "a", @progbits
+msg:
+    .section ".data", "aw", @progbits
+    .ascii "!\n"
+
+```
+
+``` Makefile
+main: asm1.o asm2.o
+	ld -T script.ld -I/lib64/ld64.so.2 asm1.o asm2.o -o main
+
+asm1.o: asm1.s
+	as asm1.s -o asm1.o
+
+asm2.o: asm2.s
+	as asm2.s -o asm2.o
+
+clean:
+	rm *.o main
+
+
+```
+
+``` script.ld
+/* elf64-powerpc64le を指定 */
+OUTPUT_FORMAT("elf64-powerpcle", "elf64-powerpcle",
+          "elf64-powerpcle")
+OUTPUT_ARCH(powerpc:common64)
+ 
+/* ELFヘッダのエントリポイントは_startを指すように指定 */
+ENTRY(_start)
+ 
+/* プログラムヘッダ (ローダが参照するヘッダ) */
+PHDRS
+{
+  /* textセグメント (ELFヘッダとプログラムヘッダも一緒にロードする) */
+  text PT_LOAD FILEHDR PHDRS FLAGS (5);
+  /* dataセグメント */
+  data PT_LOAD FLAGS (6);
+  /* bssセグメント */
+  bss PT_LOAD FLAGS (6);
+}
+ 
+ 
+/* セクションヘッダ (リンカが参照するヘッダ) */
+SECTIONS
+{
+ 
+  /* VMAを移動する */
+  /* PowerPC64では通常 0x10000000 以降にプログラムをロードする */
+  /* また、ELFヘッダとプログラムヘッダもtextセグメントと同時にロードするため、VMAをSIZEOF_HEADERSにするとページ境界に揃えてロードできる */
+  . = SEGMENT_START("text", 0x10000000) + SIZEOF_HEADERS;
+ 
+  /* 入力: 全てのファイルの.textセクション */
+  /* 出力: .textセクション */
+  /* 出力: textセグメント */
+  .text : { *(.text) } :text
+ 
+  /* textとdataは別のページにロードしたいので、0x10000だけ間を空ける */
+  . = . + 0x10000;
+ 
+
+  /* 入力: 各ファイルの各セクションを順番に。 */
+  /* 出力: .dataセクション */
+  /* 出力: dataセグメント */
+  .data : { asm1.o(.rodata) asm1.o(.message2) asm2.o(.message2) asm2.o(.message1) asm1.o(.message1) asm1.o(.data) asm2.o(.data) asm1.o(.bss) } :data
+
+}
+
+```
+
+
+script.ldの.dataの行が書き換えた部分であり、本質である。
+ファイルとセクション名を順番に並べれば、順番通りに配置される。
+
+makeをして新しくできるmainを実行すると、たしかに表示されることが分かる。
+
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIAEjMa1gAA+1YbU/bVhTOV/wrziJNShgY23HMlGpSIwgFCQpK0kmbJiEncZlVJ0ZxNpCqSrHd
+t61U7ZhYB9M0Oo1BqQaT9qGoTPsztyniX/S+OA5OSOimBbTVzwdsn3ve/Jx7fG4QxQ8LI5H+QsAY
+TSbJVRxNCievTUTEhJCQRmVFUOSIIIqyKEQg2ee8KL6wamoVIFI0zRu6ZnXVO2v9PwqR1N8qVvXF
+Gm+U+hODFFiR5W71TwiK2Fb/hJRIRkDoTzpBvOP1HxkEzbiuyMOL5pJWXSwqsqEBclZfr9xr7G3A
+4Ag3ey0/dy0/PzGbnUnnY9GAtqFFh6BTxIGPjsV402E6OzYZ8+SpolkumxVFjnPA4ZQy0xPI/R65
+LnLryN5Dzg5y/0DufeTuIvdH5PziPdr786R8NZYwsteRg4V3kf28lX/maj77SYzpee6R+wS5vyHn
+d+Q+Q+6mHwpiROz+SaOuNB45R3e2qdMHvkqcuJybHM/muJv4NbGzmraM4x9Sb09ZXhALvsBOt4DI
+cV4d1I9erOKMm6G/YhFpIKDeYS4/Pz2bHoeJqekMDg00PkxMp6/kIJaMX2KJlNSa2p4I9UEWWj6Y
+ldK0KljWqUZYfprNLcwg45AY7SPnBXK3qd0JDneJwHnek8NcZiw/NXuV0sgy+Xgmjet4tH3YeLDG
+LFgmeGmObJO5MUVGNna2f1zfaBwcgLAsep8QeHW4dbz+kLIYZNpZbePV94nsv5D9E6rbb1+rU0qN
+DRqPV16vO50VJN4dGwdgL5ab+jQzOzE/mUmPZ7I5ou5p4YgbxM45aPzsHq2tkN37yEU29v3rCZf4
+xR/6+fPwEeQyV2bw5p7P5dNZ3JgkOdyNLVLi8AEEg15qUt24s9X4+ocUvu6QILjD3DXkPKWNhfPa
+4/03bVXYJ65x7yU1fiul07qDvQHd2Sm4CYMxeh+HW5AiN80kqam9Q7e1vd+4v0Xz9KgK0v2EcG3f
+JgqYp7rtkYDsTWR/c/zdt2RfPXuJ7wME8pggT5Mw00bN49ttpBBJ26Z3Vo837x6t7ZJs6k4nQ35L
+9mCoa9tSa8qQapVF3ozxVZOI4v5zWbMsdUGTqETqKRE7rE5IfK9S4Imu4e8ArQyRcrj9L3pghfhX
+Qc9/tNb9O9qccf4TyL13/ktIyig+/0myLIbnv/MAOaPxakH/UqtaulkBiZ7d+AXDLBjADk1MYmnF
+GlGI8t6giarL+O/lxaq5UNBrFseUU1Tb0OH9qjAEcuspMQSi92ThR3kIytbC5c9VKlNLJZ0J/RWj
+ZZrEpsyTVaTDoRVADAQQgkoncm5+F2negbQZAVZR1yFqGNEuhmJvQ7Ma7YzJvta9DSe1joi+0VL3
+PEsdVvgz3TKqmC0Tw6wsYGK61Z/2/4x6Q7uuG1qf9thZ/S8lFb//k6MS+f0nJOWw/88DZVWvpLxh
+750AuAGjBMN58P8rAMNTI4ZeUOQRo6TIvGXyUtAChk0gjjiOiT2HFjegWt4tUWGLVEnylKSWkuQr
+kRw4/FtRraS4gWoZBvmm+4tm6/+H5vyXLnD+J3DPN/sfdz6d/4lE2P/ngZ7zH8/hrqP0jIkIS91G
+6Rkz2Bz6G6MUJ5j6B/Pzvc8q0fBbEiJEiBAhQoQIESJEiBAhQoR4R/AG7Vtd0gAoAAA=

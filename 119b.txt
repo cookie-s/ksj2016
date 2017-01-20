@@ -1,0 +1,152 @@
+asm.s, Makefile という2個のファイルを置いた。以下にそれぞれ内容を示す。
+
+``` asm.s
+head:
+
+# e_ident
+.byte 0x7F # EI_MAG[0]: ELFMAG0
+.byte 0x45 # EI_MAG[1]: ELFMAG1
+.byte 0x4c # EI_MAG[2]: ELFMAG2
+.byte 0x46 # EI_MAG[3]: ELFMAG3
+.byte 2 # EI_CLASS: ELFCLASS64
+.byte 1 # EI_DATA:ELFDATA2LSB
+.byte 1 # EI_VERSION: EV_CURRENT
+.byte 0 # EI_OSABI
+.byte 0 # EI_ABIVERSION
+.byte 0 # EI_PAD
+.byte 0
+.byte 0
+.long 0
+
+# e_type
+.word 2 # ET_EXEC
+
+# e_machine
+.word 21 # EM_PPC64 http://www.sco.com/developers/gabi/2000-07-17/ch4.eheader.html
+
+# e_version
+.long 1 # EV_CURRENT
+
+# e_entry
+.word entry@l
+.word entry@h
+.word entry@higher
+.word entry@highest
+
+# e_phoff
+.word (ph - head)@l
+.word (ph - head)@h
+.word (ph - head)@higher
+.word (ph - head)@highest
+
+# e_shoff
+.long 0
+.long 0
+
+# e_flags
+.long 2
+
+# e_ehsize
+.word 0x40
+
+# e_phentsize
+.word 56
+
+# e_phnum
+.word 1
+
+# e_shentsize
+.word 0
+
+# e_shnum
+.word 0
+
+# e_shstrndx
+.word 0 # SHN_UNDEF
+
+endh:
+
+ph: # http://www.mcs.anl.gov/OpenAD/OpenADFortTkExtendedDox/structElf64__Phdr.html
+.long 1 # p_type: PT_LOAD
+.long 7
+.long 0 # p_offset: 0
+.long 0
+.word head@l # p_vaddr
+.word head@h
+.word head@higher
+.word head@highest
+.word head@l # p_paddr
+.word head@h
+.word head@higher
+.word head@highest
+.long (end-head) # p_filesz
+.long 0
+.long (end-head) # p_memsz
+.long 0
+#.long 0 # p_alignなんだけど、
+#.long 0 # まあ、動くので....ケチらせて...
+
+entry:
+li %r0, 4      # write
+li %r5, (end-head)    # count
+lis %r4, head@ha# buf
+#addi %r4, %r4, head@l # どうせゼロ。
+li %r3, 1      # fd
+sc
+
+li %r0, 1      # exit
+li %r3, 0      # status
+sc
+
+end:
+
+```
+
+``` Makefile
+.PHONY: all test
+
+all: main
+
+main: main.o # http://stackoverflow.com/questions/13132138/purest-way-to-assemble-compile-a-file-with-no-other-elf-object-bloat
+	ld main.o -o main --oformat=binary
+
+main.o: asm.s
+	as asm.s -o main.o
+
+test:
+	./main | diff - ./main && echo 'main is quine.' && wc ./main
+
+```
+
+
+makeとすると実行可能ファイルができる。
+その上でmake testとすると、diffがないかどうかと、mainのサイズが示される。
+
+プログラムヘッダのp_alignが不正なデータでも動いてしまったので、
+ケチってp_alignは機械語の先頭になってしまうことを許容した結果、144bytesになった。
+もしp_alignを正しく書いたとしても、ちょうど152bytesになる。
+
+
+
+これらのファイルをアーカイブ化して圧縮、base64化したものが以下。
+base64 -d | tar zxに標準入力から以下を与えることで解凍される。
+
+H4sIAAPIblgAA+1WW4vkRBSe18mvKGjcXWFy6yTdGhC2d6Znd2AuzfTsoog06aTSiZOkskn1dM/i
+w6YXBPFBRHzyxSdlBQXfxT8T/B+eVK4947IgjCjW99BV+b5Tp06dU8lpVX1/Lu/cLRTA0DCKUR0a
+SnessaNqiqYZujYcgJ2q6qqxg4w7jothmVIrQWjHJuTSx+kb7d6m/0ehFvW30lC6w5MVBR7o+pvq
+3x8awxv172tDfQcpdxdSi/95/T1sOaYg9BCe+Q6OqCDNrylGynp4iHpofDQ7GT3+WPnEROPjQ5gq
+ja4bra42utrqdqv3G73f6oNW1xpdq/R+Ke4fj6ZTprHZQK9ktZQPRhcjE8Ri7B9PH22rz8bn06Oz
+U1j+bLb/9Px8fHpR714anE1Hj462KSCqZdv8ZHRQE+0YkGgBI0sevY6xIK1I4pSxX8zGH473Sy20
+bM+PGpmFdzKbTPYHOvIojU1ZXq1WUmoTySah7OArHJAYJ6m8sOa+3Id3RFSGojqUbU+XcFEynEge
+DYPS/xWY+iSqAmLu2xMzCyhscl3tz+YPg60nb/vJX3g4uU2ltPQWe8R1K/lB7CERFSG92/jsct5f
+cV3/t4R6l7TcpUryVrLdwFqkFdWvTuil/os6xXC7lDpUiL+jGIOaj5Zhxan1ftumSk23lg2V0iRy
+1jULCZ8+OZ09PT0YHwoCjhwP3qjYM4HvlDe0U8mKAmlBruSzGEejg2o4JAm9uByvKazEzgFZy+B+
+adNx4A702WziOVWx2/rG7L6ZaHIxOz4rriZThnWWmAVkL8XU7OSuDLdI9cOAmVxZjpN0aW/roVum
+loH63HIU/11HLLIHcHCR3QDmzPUDnL64UfkbNiEOOya97rmtwF9EefZTvvkmz77Ps6/z7HX+Musa
+5dnvebYB8o8vv82zr/Lslzz7UQLkm1/zV1m++SLPvsuzH4Ap6gkvgCkEPnonUfaQjhh6aJX4FJe0
+sdeNj6k2WcLHNPBTkPW96tRWD82XrtCDbPkl34oBi+t1nn1e7L35LX/1c/5yU/rX9qDq1bauI6S2
+0ITT8Hjt08ZaqVlobnSZshUQoCnc+v6z/n9iXeIi63fUY97S/xXdUJv+P1BU6P+aovd5//8nIE2e
+nJ1+ZCIrCBBl316YmSi0/EgQit9yLpH2YwYJsy8JNB03ICvWsZ4vYSV0oFRWNVXrq9p7crxMgBNX
+1rVIiWilKQ7nARbBOoaLJlpicd/ElU89MSIiofCBEHHgimT+KbapOA+IRYXdwKl3FwmbIVEkLklC
+i34w9yMLmppQGsAJij+xwq6VlrN6hUQEoTiYKexKMnPxGXJ814WmUz3fu4ew7RF0nz3BG/t8Cd1a
+ul8IK7uyuv3mcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHD8+/AnfgfwxAAoAAA=

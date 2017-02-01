@@ -1,11 +1,14 @@
 # README
 
+## What is This?
 you know.
 
-* http://hagi.is.s.u-tokyo.ac.jp/lectures/ksj2016/
-* https://hagi.is.s.u-tokyo.ac.jp/rss/
+## Yet to Solve
 
-it's the specification the latter ssl site's ssl certificate is not reliable.
-
-if you want to test assembly programs with vim-quickrun set in .lvimrc, you have to configure your ~/.ssh/config.
-please set host \_ksjasm to connect with it to the powerpc server.
+- 10
+- 53
+- 63
+- 115
+- 121
+- 122
+- 123
